@@ -9,10 +9,13 @@ Created on Fri May 18 21:31:15 2018
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Imports
 
 # Built in modules
+import argparse
 from datetime import datetime, timedelta
 import logging
 import time
 # from threading import Timer,Thread,Event
+import threading
+import os
 
 # Third party modules
 import pandas as pd
@@ -23,66 +26,32 @@ from xml.etree import ElementTree
 # Custom modules
 import database_handler as db
 import chart_drawing as cd
+import bullion_vault as bv
+import gold_markets as gm
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
 
-LOGGER = logging.getLogger(' GWR Engine')
+# LOGGER = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 # Directory locations
 CHART_DIR = "/home/davesmith/Documents/Personal/Python/CommodityManager/charts/"
 
-# Web connection consts
-LOGIN_REQUEST = "https://www.bullionvault.com/secure/login.do"
-LOGIN_REPLY = 'https://www.bullionvault.com/secure/j_security_check?'
-USERNAME_AND_PASSWORD = {'j_username': 'DAVESMITH',
-                         'j_password': 'W3G0tS0w3ll'}
-VIEW_MARKET = 'https://www.bullionvault.com/secure/api/v2/view_market_xml.do'
 
 # Markets
 GOLD_LOCATIONS = ('AUXZU', 'AUXLN', 'AUXNY', 'AUXTR', 'AUXSG')
 CURRENCIES = ('USD', 'GBP', 'EUR', 'YEN')
 
-START = 1
-STABLE_MARKET = 2
-VOLATILE_MARKET = 3
-FINISHED = 4
+_master_df = pd.DataFrame()
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
 
-class Market():
-
-    def __init__(self, location, currency):
-
-        self.location = location
-        self.currency = currency
-        self.raw_df = None
-        self.stats_df = None
-
-    def add_stats(self):
-        self.buy_limit_mean = self.raw_df['buy_limit'].mean()
-        self.buy_limit_mode = self.raw_df['buy_limit'].mode()[0]
-        self.buy_limit_std = self.raw_df['buy_limit'].std()
-
-        self.buy_quantity_mean = self.raw_df['buy_quantity'].mean()
-        self.buy_quantity_mode = self.raw_df['buy_quantity'].mode()[0]
-        self.buy_quantity_std = self.raw_df['buy_quantity'].std()
-
-        self.sell_limit_mean = self.raw_df['sell_limit'].mean()
-        self.sell_limit_mode = self.raw_df['sell_limit'].mode()[0]
-        self.sell_limit_std = self.raw_df['sell_limit'].std()
-
-        self.sell_quantity_mean = self.raw_df['sell_quantity'].mean()
-        self.sell_quantity_mode = self.raw_df['sell_quantity'].mode()[0]
-        self.sell_quantity_std = self.raw_df['sell_quantity'].std()
-        pass
-
-
 class Event():
 
-    def __init__():
+    def __init__(self):
 
         pass
 
@@ -90,168 +59,119 @@ class Event():
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
 
+def setup_logging():
+    '''
+    Setup the logging to file
+    '''
+    # Check we don't have any other handles attached
 
-def get_market_prices(session):
-    time_start = time.time()
-    response = session.get(VIEW_MARKET)
-    time_response = time.time()
+    logger.setLevel(logging.DEBUG)
 
-    root = ElementTree.fromstring(response.content)
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter(
+            '%(asctime)s %(levelname)s %(name)s %(message)s')
+    ch.setFormatter(formatter)
+    ch.setLevel(logging.DEBUG)
+    logging.getLogger('').addHandler(ch)
+        # the_log.addHandler(ch)
 
-    markets = []
-    timestamp = datetime.now()
-
-    # parse_xml_response
-    for name in root.iter():
-        if (name.attrib != {}):
-            # print(name.attrib)
-
-            commodity = name.attrib.get("securityClassNarrative", None)
-            location = name.attrib.get("securityId", None)
-            currency = name.attrib.get("considerationCurrency", None)
-
-            if commodity == 'GOLD':
-                markets.append(db.GoldMarket())
-                markets[-1].update_info(timestamp, location, currency)
-
-            direction = name.attrib.get("actionIndicator", None)
-            quantity = float(name.attrib.get("quantity", 0.0))
-            limit = int(name.attrib.get("limit", 0))
-
-            if direction == 'B':
-                markets[-1].update_buy(quantity, limit)
-
-            elif direction == 'S':
-                markets[-1].update_sell(quantity, limit)
-
-
-    for market in markets:
-        db.insert(market)
-
-    time_save_to_db = time.time()
-    rows = db.info(db.GoldMarket)
-
-    print("Database size:" + str(rows),
-          "Time total = %.1f ms" % ((time_save_to_db - time_start) * 1000),
-          "response = %.1f ms" % ((time_response - time_start) * 1000),
-          "ET = %.1f ms" % ((time_save_to_db - time_response) * 1000))
+    logger.setLevel(logging.DEBUG)
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
 
-def main():
+def main(args):
     '''
 
     '''
+
+    setup_logging()
     markets = []
 
-    # Populate the market objects into a list
+    # Populate the market objects into a list with params set to None
     for gold_loc in GOLD_LOCATIONS:
         for currency in CURRENCIES:
             if gold_loc != 'AUXTR' and currency != 'YEN':
-                markets.append(Market(gold_loc, currency))
+                markets.append(gm.Market(gold_loc, currency))
 
+    # Create the database
     db.create_database()
+    logger.info("Created the database.")
 
     # Find the time frame we have data for
     time_in_db = db.first_row(db.GoldMarket)
+    logger.info("Timestamp of the first row in GoldMarket table: {}".format(time_in_db))
+
+    _master_df = db.to_pandas(db.GoldMarket, time_in_db, datetime.now())
+
+    _plotly_df = pd.DataFrame()
+
+    _columns = ["timestamp"]
 
     for market in markets:
+        market.add_stats(_master_df)
+        logger.info(market)
 
-        # Otherwise we have raw data that need processing
-        market.raw_df = db.to_pandas(db.GoldMarket, time_in_db,
-                                     datetime.now(),
-                                     market.location, market.currency)
+        # Clean up the data ready to be plotted
+        _temp_df = market.mask(_master_df)
+        _temp_df = _temp_df.rename(columns={"buy_quantity": "{}_{}_buy_quantity".format(market.currency, market.location),
+                                            "buy_limit": "{}_{}_buy_limit".format(market.currency, market.location),
+                                            "sell_quantity": "{}_{}_sell_quantity".format(market.currency, market.location),
+                                            "sell_limit": "{}_{}_sell_limit".format(market.currency, market.location)})
+        _temp_df = _temp_df.drop(columns=["id", "location", "currency"])
+        _temp_df = _temp_df.set_index("timestamp")
 
-        market.raw_df.to_csv("/home/davesmith/Documents/Personal/Python/CommodityManager/csv/market.csv")
-        print(market.raw_df.info())
+        _plotly_df = pd.concat([_plotly_df, _temp_df], axis=1, sort=True)#, axis="columns", ignore_index=True)
 
-        start_index = 0
-        bollinger_high = market.raw_df['buy_limit'][0]
-        bollinger_low = market.raw_df['buy_limit'][0]
+        # Control the amount of data we plot
+        if market.currency == "GBP" and market.location == "AUXLN":
+            _columns.extend(list(_temp_df.columns))
 
-        inside_bolinger = False
-        state = START
+        """
+        Bollinger Bands are a type of statistical chart characterizing the prices and volatility over time of a 
+        financial instrument or commodity, using a formulaic method propounded by John Bollinger in the 1980s.
+        """
+        # gm.calc_bollinger_bands(market) #TODO - Get this working properly!!! DS - 28-06-2020
+        # logger.info("Market {}".format(market))
 
-        for index, row in market.raw_df.iterrows():
+    #_columns = list(dict.fromkeys(_columns))
+    logger.info(_columns)
 
-            if state == START:
-                std = market.raw_df['buy_limit'].iloc[start_index:index].std()
-                mean = market.raw_df['buy_limit'].iloc[start_index:index].mean()
+    #_plotly_df = _plotly_df.resample('5T')
 
-                bollinger_high = mean + (std * 4)
-                bollinger_low = mean - (std * 4)
+    if args.draw_chart:
+        _mask = (_plotly_df.index > datetime.now() - timedelta(days=7))
+        l
+        _plotly_df = _plotly_df.loc[_mask]
 
-                if index > start_index + 100:
-                    state = STABLE_MARKET
+        logger.info("We have {} rows of data across {} columns ready to draw.".format(len(_plotly_df), len(_plotly_df.columns)))
+        #_plotly_df.to_csv("/home/davesmith/Documents/Personal/GIThub/investing/CommodityManager/csv/plotly.csv")
+        cd.plotly_scatter(_plotly_df, "Dave is a legend", _columns)
 
-            elif state == STABLE_MARKET:
-                if row['buy_limit'] > bollinger_high or row['buy_limit'] < bollinger_low:
+    if args.gather_data:
+        # Create a web session to request gold market data every 5 seconds
+        _thread_web_session = threading.Thread(target=bv.main)
+        _thread_web_session.start()
+        logger.info("Started the web socket thread.")
 
-                    print(index, "Boll high", row['buy_limit'], bollinger_high, std)
-                    start_index = index
-                    state = VOLATILE_MARKET
+    while True:
+        pass
 
-                else:
-                    #print("Boll high", row['buy_limit'], bollinger_high, std, index)
-
-                    std = market.raw_df['buy_limit'].iloc[start_index:index].std()
-                    mean = market.raw_df['buy_limit'].iloc[start_index:index].mean()
-
-                    bollinger_high = mean + (std * 4)
-                    bollinger_low = mean - (std * 4)
-
-            elif state == VOLATILE_MARKET:
-                if index > start_index + 5:
-                    vol_std = market.raw_df['buy_limit'].iloc[start_index:index].std()
-
-                    if vol_std < std:
-                        print(index, "vol std", vol_std, "std", std)
-                        start_index = index
-                        state = STABLE_MARKET
-
-
-            elif state == FINISHED:
-                pass
-
-
-
-
-
-
-
-    # Fill the database
-    with requests.session() as session:
-        # fetch the login page and send back the login details
-        session.get(LOGIN_REQUEST)
-        r = session.post(LOGIN_REPLY, data=USERNAME_AND_PASSWORD)
-
-        # Get the market info every 5 seconds and add to a database
-        timer = time.time()
-
-        while (True):
-            if time.time() > (timer+5):
-                timer = time.time()
-
-                # Try get the market info. If the connection is closed then
-                # re-establish
-                try:
-                    get_market_prices(session)
-
-                except Exception as e:
-                    print(e)
-
-                    # fetch the login page and send back the login details
-                    session.get(LOGIN_REQUEST)
-                    r = session.post(LOGIN_REPLY, data=USERNAME_AND_PASSWORD)
 
 
 if __name__ == "__main__":
     '''
 
     '''
-    main()
+    # Parse the arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gather_data", help="Run the thread to gather market data from bullion vault.", action="store_true")
+    parser.add_argument("--draw_chart", help="Draw the market data we have in the database.", action="store_true")
+    args = parser.parse_args()
 
+    main(args)
+
+    """
     markets = []
 
     # Populate the market objects into a list
@@ -351,8 +271,9 @@ if __name__ == "__main__":
                     get_market_prices(session)
 
                 except Exception as e:
-                    print(e)
+                    print("Exception Occured", e)
 
                     # fetch the login page and send back the login details
                     session.get(LOGIN_REQUEST)
                     r = session.post(LOGIN_REPLY, data=USERNAME_AND_PASSWORD)
+                    """

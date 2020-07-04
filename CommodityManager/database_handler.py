@@ -181,8 +181,7 @@ def first_row(table):
     return first_time.timestamp
 
 
-def to_pandas(table, start_time, end_time,
-                       location=None, currency=None):
+def to_pandas(table, start_time, end_time, location=None, currency=None):
     '''
     Get the data from the tables and return a dataframe
     '''
