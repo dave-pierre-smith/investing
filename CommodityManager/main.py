@@ -18,6 +18,11 @@ import threading
 import os
 
 # Third party modules
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output, State
+import plotly.express as px
 import pandas as pd
 import requests
 
@@ -45,15 +50,15 @@ CURRENCIES = ('USD', 'GBP', 'EUR', 'YEN')
 
 _master_df = pd.DataFrame()
 
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+# Dash GUI dataframes
+_plotly_df = pd.DataFrame()
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
-
-class Event():
-
-    def __init__(self):
-
-        pass
 
 
 
@@ -78,6 +83,83 @@ def setup_logging():
     logger.setLevel(logging.DEBUG)
 
 
+df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
+
+available_indicators = df['Indicator Name'].unique()
+
+app.layout = html.Div([
+    html.Div([
+
+        html.Div([
+            dcc.Dropdown(
+                id='xaxis-column',
+                options=[{'label': i, 'value': i} for i in available_indicators],
+                value='Fertility rate, total (births per woman)'
+            ),
+            dcc.RadioItems(
+                id='xaxis-type',
+                options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
+                value='Linear',
+                labelStyle={'display': 'inline-block'}
+            )
+        ],
+        style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([
+            dcc.Dropdown(
+                id='yaxis-column',
+                options=[{'label': i, 'value': i} for i in available_indicators],
+                value='Life expectancy at birth, total (years)'
+            ),
+            dcc.RadioItems(
+                id='yaxis-type',
+                options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
+                value='Linear',
+                labelStyle={'display': 'inline-block'}
+            )
+        ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
+    ]),
+
+    dcc.Graph(id='indicator-graphic'),
+
+    dcc.Slider(
+        id='year--slider',
+        min=df['Year'].min(),
+        max=df['Year'].max(),
+        value=df['Year'].max(),
+        marks={str(year): str(year) for year in df['Year'].unique()},
+        step=None
+    )
+])
+
+@app.callback(
+    Output('indicator-graphic', 'figure'),
+    [Input('xaxis-column', 'value'),
+     Input('yaxis-column', 'value'),
+     Input('xaxis-type', 'value'),
+     Input('yaxis-type', 'value'),
+     Input('year--slider', 'value')])
+def update_graph(xaxis_column_name, yaxis_column_name,
+                 xaxis_type, yaxis_type,
+                 year_value):
+    dff = df[df['Year'] == year_value]
+
+    fig = px.scatter(x=dff[dff['Indicator Name'] == xaxis_column_name]['Value'],
+                     y=dff[dff['Indicator Name'] == yaxis_column_name]['Value'],
+                     hover_name=dff[dff['Indicator Name'] == yaxis_column_name]['Country Name'])
+
+    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+
+    fig.update_xaxes(title=xaxis_column_name,
+                     type='linear' if xaxis_type == 'Linear' else 'log')
+
+    fig.update_yaxes(title=yaxis_column_name,
+                     type='linear' if yaxis_type == 'Linear' else 'log')
+
+    return fig
+
+
+
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
 
 def main(args):
@@ -87,6 +169,8 @@ def main(args):
 
     setup_logging()
     markets = []
+
+    global _plotly_df
 
     # Populate the market objects into a list with params set to None
     for gold_loc in GOLD_LOCATIONS:
@@ -104,7 +188,7 @@ def main(args):
 
     _master_df = db.to_pandas(db.GoldMarket, time_in_db, datetime.now())
 
-    _plotly_df = pd.DataFrame()
+
 
     _columns = ["timestamp"]
 
@@ -141,7 +225,6 @@ def main(args):
 
     if args.draw_chart:
         _mask = (_plotly_df.index > datetime.now() - timedelta(days=7))
-        l
         _plotly_df = _plotly_df.loc[_mask]
 
         logger.info("We have {} rows of data across {} columns ready to draw.".format(len(_plotly_df), len(_plotly_df.columns)))
@@ -153,9 +236,6 @@ def main(args):
         _thread_web_session = threading.Thread(target=bv.main)
         _thread_web_session.start()
         logger.info("Started the web socket thread.")
-
-    while True:
-        pass
 
 
 
@@ -171,109 +251,5 @@ if __name__ == "__main__":
 
     main(args)
 
-    """
-    markets = []
-
-    # Populate the market objects into a list
-    for gold_loc in GOLD_LOCATIONS:
-        for currency in CURRENCIES:
-            if gold_loc != 'AUXTR' and currency != 'YEN':
-                markets.append(Market(gold_loc, currency))
-
-    db.create_database()
-
-    # debug function
-    # db.delete(db.GoldFeaturesDaily)
-
-    # Find the time frame we have data for
-    time_in_db = db.first_row(db.GoldMarket)
-    time_in_db = time_in_db.replace(hour=0, minute=0, second=0, microsecond=0)
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-
-    # Cycle through all the raw data and process if needed
-    while time_in_db < today:
-        for market in markets:
-
-            # We already have features for this day so move along to the nex step
-            if db.info(db.GoldFeaturesDaily, ts=time_in_db,
-                       location=market.location, currency=market.currency):
-                print("Already have features for", time_in_db,
-                      market.location, market.currency)
-                time_in_db = time_in_db + timedelta(days=1)
-                continue
-
-            print("No features for", time_in_db, market.location, market.currency)
-
-            # Otherwise we have raw data that need processing
-            market.raw_df = db.to_pandas(db.GoldMarket, time_in_db,
-                                           time_in_db + timedelta(days=1),
-                                           market.location, market.currency)
-
-            # If we have stuff in the dataframe, then save it to the database
-            if len(market.raw_df) != 0:
-                db.insert(db.GoldFeaturesDaily(time_in_db, market.location,
-                                               market.currency, market.raw_df))
-            else:
-                print("Dataframe empty")
-
-            market.raw_df = None
-            # time.sleep(1)
-
-        time_in_db = time_in_db + timedelta(days=1)
-
-    for market in markets:
-        # Load all the statistics into a dataframe and chart it
-        market.stats_df = db.to_pandas(db.GoldFeaturesDaily,
-                                       db.first_row(db.GoldFeaturesDaily),
-                                       datetime.now().replace(
-                                               hour=0, minute=0, second=0,
-                                               microsecond=0),
-                                       market.location, market.currency)
-
-        #print(market.stats_df)
-        '''
-        cd.duelAxesLineChart(market.location + " " + market.currency,
-                             market.stats_df['timestamp'],
-                             market.stats_df['buy_limit_mean'],
-                             market.stats_df['buy_limit_std'],
-                             "Date", "Price", "Price",
-                             'r','g',
-                             CHART_DIR + market.location + "_" + market.currency +".png")
-
-        cd.singleAxesLineChart(
-                market.location + " " + market.currency, "Date", "Price",
-                CHART_DIR + "LDN_GBP_price.png",
-                "Day",
-                market.stats_df['timestamp'],
-                market.stats_df['buy_limit_mean'],
-                "r",
-                market.stats_df['timestamp'],
-                market.stats_df['buy_limit_std'], "g")
-        '''
-            #stats_df['timestamp'], stats_df['buy_limit_std'], "b")
-
-    # Fill the database
-    with requests.session() as session:
-        # fetch the login page and send back the login details
-        session.get(LOGIN_REQUEST)
-        r = session.post(LOGIN_REPLY, data=USERNAME_AND_PASSWORD)
-
-        # Get the market info every 5 seconds and add to a database
-        timer = time.time()
-
-        while (True):
-            if time.time() > (timer+5):
-                timer = time.time()
-
-                # Try get the market info. If the connection is closed then
-                # re-establish
-                try:
-                    get_market_prices(session)
-
-                except Exception as e:
-                    print("Exception Occured", e)
-
-                    # fetch the login page and send back the login details
-                    session.get(LOGIN_REQUEST)
-                    r = session.post(LOGIN_REPLY, data=USERNAME_AND_PASSWORD)
-                    """
+    print("DASH VERSION: {}".format(dcc.__version__))
+    app.run_server(debug=True)

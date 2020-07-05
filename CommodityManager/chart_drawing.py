@@ -11,8 +11,6 @@ Created on Thu Apr 12 16:34:52 2018
 import logging
 
 # Third party modules
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import numpy as np
 from _plotly_future_ import v4_subplots
 import plotly
