@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri May 18 21:31:15 2018
-
-@author: davesmith
-"""
-
-# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Imports
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Imports
 
 # Built in modules
 import argparse
@@ -34,15 +26,14 @@ import chart_drawing as cd
 import bullion_vault as bv
 import gold_markets as gm
 
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
 
-# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
-
-# LOGGER = logging.getLogger()
-logger = logging.getLogger(__name__)
+# The logger
+#logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
 
 # Directory locations
 CHART_DIR = "/home/davesmith/Documents/Personal/Python/CommodityManager/charts/"
-
 
 # Markets
 GOLD_LOCATIONS = ('AUXZU', 'AUXLN', 'AUXNY', 'AUXTR', 'AUXSG')
@@ -54,120 +45,88 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
-# Dash GUI dataframes
-_plotly_df = pd.DataFrame()
-
-# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
-
+# Dash GUI dataframes - These are loaded as a part of main() to initialise the data.
+_plotly_df = pd.read_csv("/home/davesmith/Documents/Personal/GIThub/investing/CommodityManager/csv/master.csv")
+_plotly_df['timestamp'] = pd.to_datetime(_plotly_df['timestamp'], format="%Y-%m-%d %H:%M:%S.%f")
 
 
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
 
-# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
+CSS_COLOURS = {
+    'background': '#d7e0e0',
+    'h1_text': '#1b1c1c',
+    'h2_text': '#353738'
+}
 
-def setup_logging():
-    '''
-    Setup the logging to file
-    '''
-    # Check we don't have any other handles attached
+SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
 
-    logger.setLevel(logging.DEBUG)
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Dash Layout
+# %% Must be called before the callback functions as the decorators need the layout to determine the inputs
 
-    ch = logging.StreamHandler()
-    formatter = logging.Formatter(
-            '%(asctime)s %(levelname)s %(name)s %(message)s')
-    ch.setFormatter(formatter)
-    ch.setLevel(logging.DEBUG)
-    logging.getLogger('').addHandler(ch)
-        # the_log.addHandler(ch)
+# Define the GUI elements
+_h1 = html.H1(children='Daveonomics', style={'textAlign': 'center','color': CSS_COLOURS['h1_text']})
+_h2 = html.H2(children='A portal to analyse markets.', style={'textAlign': 'center','color': CSS_COLOURS['h1_text']})
 
-    logger.setLevel(logging.DEBUG)
+_dt_picker = dcc.DatePickerRange(id='my-date-picker-range',
+            min_date_allowed=_plotly_df['timestamp'].min(), max_date_allowed=_plotly_df['timestamp'].max(),
+            initial_visible_month=_plotly_df['timestamp'].max().date(), end_date=_plotly_df['timestamp'].max().date())
 
-
-df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
-
-available_indicators = df['Indicator Name'].unique()
-
-app.layout = html.Div([
-    html.Div([
-
-        html.Div([
-            dcc.Dropdown(
-                id='xaxis-column',
-                options=[{'label': i, 'value': i} for i in available_indicators],
-                value='Fertility rate, total (births per woman)'
-            ),
-            dcc.RadioItems(
-                id='xaxis-type',
-                options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
-                value='Linear',
-                labelStyle={'display': 'inline-block'}
-            )
+_dropdown = dcc.Dropdown(id='dropdown-currency',
+        options=[
+            {'label': 'Great British Pounds', 'value': 'GBP'},
+            {'label': 'US Dollar', 'value': 'USD'},
+            {'label': 'Euro', 'value': 'EUR'}
         ],
-        style={'width': '48%', 'display': 'inline-block'}),
-
-        html.Div([
-            dcc.Dropdown(
-                id='yaxis-column',
-                options=[{'label': i, 'value': i} for i in available_indicators],
-                value='Life expectancy at birth, total (years)'
-            ),
-            dcc.RadioItems(
-                id='yaxis-type',
-                options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
-                value='Linear',
-                labelStyle={'display': 'inline-block'}
-            )
-        ],style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
-    ]),
-
-    dcc.Graph(id='indicator-graphic'),
-
-    dcc.Slider(
-        id='year--slider',
-        min=df['Year'].min(),
-        max=df['Year'].max(),
-        value=df['Year'].max(),
-        marks={str(year): str(year) for year in df['Year'].unique()},
-        step=None
+        value='GBP'
     )
-])
 
-@app.callback(
-    Output('indicator-graphic', 'figure'),
-    [Input('xaxis-column', 'value'),
-     Input('yaxis-column', 'value'),
-     Input('xaxis-type', 'value'),
-     Input('yaxis-type', 'value'),
-     Input('year--slider', 'value')])
-def update_graph(xaxis_column_name, yaxis_column_name,
-                 xaxis_type, yaxis_type,
-                 year_value):
-    dff = df[df['Year'] == year_value]
+_graph = dcc.Graph(id='indicator-graphic', style={'width': '48%'})
 
-    fig = px.scatter(x=dff[dff['Indicator Name'] == xaxis_column_name]['Value'],
-                     y=dff[dff['Indicator Name'] == yaxis_column_name]['Value'],
-                     hover_name=dff[dff['Indicator Name'] == yaxis_column_name]['Country Name'])
+# Group the elements into DIVS
+app.layout = \
+    html.Div([
+        html.Div([_h1, _h2]),
+        html.Div([_dt_picker, _dropdown], style={'width': '48%', 'float': 'centre', 'backgroundColor': CSS_COLOURS['background']}),
+        _graph
+    ],
+    style={'backgroundColor': CSS_COLOURS['background']})
 
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
 
-    fig.update_xaxes(title=xaxis_column_name,
-                     type='linear' if xaxis_type == 'Linear' else 'log')
-
-    fig.update_yaxes(title=yaxis_column_name,
-                     type='linear' if yaxis_type == 'Linear' else 'log')
-
-    return fig
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
 
 
-# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
+
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
+
+@app.callback(Output('indicator-graphic', 'figure'),
+              [Input('my-date-picker-range', 'start_date'),
+               Input('my-date-picker-range', 'end_date'),
+               Input('dropdown-currency', 'value')])
+def update_graph(start_date, end_date, currency):
+
+    global _plotly_df
+
+    print("update_graph, df.len: {}, df.columns {}".format(len(_plotly_df), _plotly_df.columns))
+
+    _temp_df = _plotly_df.copy()
+    _temp_df = _temp_df.loc[_plotly_df['currency'] == currency]
+
+    _fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_start_date=start_date, a_end_date=end_date)
+
+    return _fig
+
+
+
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
+
 
 def main(args):
     '''
 
     '''
 
-    setup_logging()
+    #setup_logging()
     markets = []
 
     global _plotly_df
@@ -180,21 +139,20 @@ def main(args):
 
     # Create the database
     db.create_database()
-    logger.info("Created the database.")
+    print("Created the database.")
 
     # Find the time frame we have data for
     time_in_db = db.first_row(db.GoldMarket)
-    logger.info("Timestamp of the first row in GoldMarket table: {}".format(time_in_db))
+    print("Timestamp of the first row in GoldMarket table: {}".format(time_in_db))
 
     _master_df = db.to_pandas(db.GoldMarket, time_in_db, datetime.now())
-
-
+    _master_df.to_csv("/home/davesmith/Documents/Personal/GIThub/investing/CommodityManager/csv/master.csv")
 
     _columns = ["timestamp"]
 
     for market in markets:
         market.add_stats(_master_df)
-        logger.info(market)
+        print(market)
 
         # Clean up the data ready to be plotted
         _temp_df = market.mask(_master_df)
@@ -219,7 +177,7 @@ def main(args):
         # logger.info("Market {}".format(market))
 
     #_columns = list(dict.fromkeys(_columns))
-    logger.info(_columns)
+    print(_columns)
 
     #_plotly_df = _plotly_df.resample('5T')
 
@@ -227,7 +185,7 @@ def main(args):
         _mask = (_plotly_df.index > datetime.now() - timedelta(days=7))
         _plotly_df = _plotly_df.loc[_mask]
 
-        logger.info("We have {} rows of data across {} columns ready to draw.".format(len(_plotly_df), len(_plotly_df.columns)))
+        print("We have {} rows of data across {} columns ready to draw.".format(len(_plotly_df), len(_plotly_df.columns)))
         #_plotly_df.to_csv("/home/davesmith/Documents/Personal/GIThub/investing/CommodityManager/csv/plotly.csv")
         cd.plotly_scatter(_plotly_df, "Dave is a legend", _columns)
 
@@ -235,7 +193,7 @@ def main(args):
         # Create a web session to request gold market data every 5 seconds
         _thread_web_session = threading.Thread(target=bv.main)
         _thread_web_session.start()
-        logger.info("Started the web socket thread.")
+        print("Started the web socket thread.")
 
 
 
@@ -243,13 +201,17 @@ if __name__ == "__main__":
     '''
 
     '''
+    # setup_logging()
+
     # Parse the arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--gather_data", help="Run the thread to gather market data from bullion vault.", action="store_true")
     parser.add_argument("--draw_chart", help="Draw the market data we have in the database.", action="store_true")
     args = parser.parse_args()
 
-    main(args)
+    # main(args)
 
     print("DASH VERSION: {}".format(dcc.__version__))
     app.run_server(debug=True)
+
+    print("Running code after the app is initialised.")

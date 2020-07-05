@@ -27,9 +27,7 @@ from flask_caching import Cache
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-#external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-#app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 
 """:arg
@@ -236,12 +234,21 @@ def update_figure(selected_year):
     """
 
 
-"""
+
 # Example 9
 
+print("Dataframe loaded")
 df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
 
 available_indicators = df['Indicator Name'].unique()
+
+
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Dash Layout
+# %% Must be called before the callback functions as the decorators need the layout to determine the inputs
+
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div([
     html.Div([
@@ -287,7 +294,7 @@ app.layout = html.Div([
         step=None
     )
 ])
-
+ # Callback function is also called on initialisation
 @app.callback(
     Output('indicator-graphic', 'figure'),
     [Input('xaxis-column', 'value'),
@@ -298,6 +305,7 @@ app.layout = html.Div([
 def update_graph(xaxis_column_name, yaxis_column_name,
                  xaxis_type, yaxis_type,
                  year_value):
+    print("update_graph")
     dff = df[df['Year'] == year_value]
 
     fig = px.scatter(x=dff[dff['Indicator Name'] == xaxis_column_name]['Value'],
@@ -313,7 +321,7 @@ def update_graph(xaxis_column_name, yaxis_column_name,
                      type='linear' if yaxis_type == 'Linear' else 'log')
 
     return fig
-    """
+
 
 
 """:arg
@@ -952,6 +960,7 @@ def update_graph_4(value):
     })
     """
 
+"""
 # Example 17 - Cache data on the server to improve response times.
 
 external_stylesheets = [
@@ -1034,6 +1043,7 @@ def display_value_2(value, session_id):
         'Output 2 - Button has been clicked {} times'.format(value),
         html.Pre(df.to_csv())
     ])
+    """
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
