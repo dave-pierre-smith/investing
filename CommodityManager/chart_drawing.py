@@ -33,40 +33,7 @@ logger.setLevel(logging.DEBUG)
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
-class Trace():
-    def __init__(self):
-        self.name = ""
-        self.dataPoints = []
 
-    def get_max(self):
-        if len(self.dataPoints) == 0:
-            return 0
-        return max(self.dataPoints)
-
-
-class TraceList():
-    def __init__(self):
-        self.time = []
-        self.traces = {}
-        self.columnOrder = []
-
-    def new_trace(self, name):
-        t = Trace()
-        t.name = name
-        self.traces[name] = t
-
-    def create_traces_from_list(self, names):
-        for n in names:
-            self.new_trace(n)
-
-    def add_new_line(self, data, timestamp):
-
-        for k, v in data.items():
-            # find trace
-            t = self.traces[k]
-            t.dataPoints.append(float(v))
-
-        self.time.append(timestamp)
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
@@ -118,20 +85,12 @@ def plotly_line(a_df, a_title, a_columns=[]):
 
     plotly.offline.plot(fig, auto_open=True)
 
-def plotly_scatter_fig(a_df, a_title, a_start_date=None, a_end_date=None):
+def plotly_scatter_fig(a_df, a_title, a_yaxis):
     """:arg
     """
-    print("plotly_scatter, args {} {}, {} {} {} {} ".format(a_df["timestamp"].iloc[0], len(a_df), a_start_date, a_end_date, type(a_start_date), type(a_end_date)))
+    print("plotly_scatter, args {} {} ".format(a_df["timestamp"].iloc[0], len(a_df)))
 
     #_df = a_df.copy()
-
-    # We have some dates to mask the data on
-    if a_start_date is not None and a_end_date is not None:
-        a_start_date = datetime.strptime(re.split('T| ', a_start_date)[0], '%Y-%m-%d')
-        a_end_date = datetime.strptime(re.split('T| ', a_end_date)[0], '%Y-%m-%d')
-
-        a_df = a_df.loc[(a_df["timestamp"] >= a_start_date) & (a_df["timestamp"] <= a_end_date)]
-        print("len(_df): {}", len(a_df))
 
     ACCEPTED_COLUMN_TYPES = [np.float64, np.int64, float]
 
@@ -146,7 +105,7 @@ def plotly_scatter_fig(a_df, a_title, a_start_date=None, a_end_date=None):
     #fig = sp.make_subplots(rows=2, cols=1)
     print("plotly_scatter, initialise figure with 2 subplots. Parse over {} columns, {}".format(_col_count, a_df.columns))
 
-    fig = px.line(a_df, x="timestamp", y="buy_limit", color="location")
+    fig = px.line(a_df, x="timestamp", y=a_yaxis, color="location")
 
     #fig.update_layout({'color': main.CSS_COLOURS["background"]})
 

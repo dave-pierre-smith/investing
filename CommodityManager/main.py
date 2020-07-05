@@ -8,6 +8,7 @@ import time
 # from threading import Timer,Thread,Event
 import threading
 import os
+import re
 
 # Third party modules
 import dash
@@ -80,14 +81,20 @@ _dropdown = dcc.Dropdown(id='dropdown-currency',
         value='GBP'
     )
 
-_graph = dcc.Graph(id='indicator-graphic', style={'width': '48%'})
+_graph = dcc.Graph(id='indicator-graphic', style={'width': '100%'})
+_graph_sell_limit = dcc.Graph(id='graph_sell_limit', style={'width': '100%'})
+_graph_buy_quantity = dcc.Graph(id='graph_buy_quantity', style={'width': '100%'})
+_graph_sell_quantity = dcc.Graph(id='graph_sell_quantity', style={'width': '100%'})
 
 # Group the elements into DIVS
 app.layout = \
     html.Div([
-        html.Div([_h1, _h2]),
-        html.Div([_dt_picker, _dropdown], style={'width': '48%', 'float': 'centre', 'backgroundColor': CSS_COLOURS['background']}),
-        _graph
+        html.Div([_h1, _h2, _dt_picker, _dropdown]),
+        html.Div([_graph], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
+        html.Div([_graph_sell_limit], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
+        html.Div([_graph_buy_quantity], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
+        html.Div([_graph_sell_quantity], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
+
     ],
     style={'backgroundColor': CSS_COLOURS['background']})
 
@@ -99,7 +106,10 @@ app.layout = \
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
 
-@app.callback(Output('indicator-graphic', 'figure'),
+@app.callback([Output('indicator-graphic', 'figure'),
+               Output('graph_sell_limit', 'figure'),
+               Output('graph_buy_quantity', 'figure'),
+               Output('graph_sell_quantity', 'figure')],
               [Input('my-date-picker-range', 'start_date'),
                Input('my-date-picker-range', 'end_date'),
                Input('dropdown-currency', 'value')])
@@ -109,12 +119,24 @@ def update_graph(start_date, end_date, currency):
 
     print("update_graph, df.len: {}, df.columns {}".format(len(_plotly_df), _plotly_df.columns))
 
+    # Mask out the currency
     _temp_df = _plotly_df.copy()
     _temp_df = _temp_df.loc[_plotly_df['currency'] == currency]
 
-    _fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_start_date=start_date, a_end_date=end_date)
+    # We have some dates to mask the data on
+    if start_date is not None and end_date is not None:
+        a_start_date = datetime.strptime(re.split('T| ', start_date)[0], '%Y-%m-%d')
+        a_end_date = datetime.strptime(re.split('T| ', end_date)[0], '%Y-%m-%d')
 
-    return _fig
+        _temp_df = _temp_df.loc[(_temp_df["timestamp"] >= a_start_date) & (_temp_df["timestamp"] <= a_end_date)]
+        print("len(_df): {}", len(_temp_df))
+
+    _fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="buy_limit")
+    _fig_2 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="sell_limit")
+    _fig_3 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="buy_quantity")
+    _fig_4 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="sell_quantity")
+
+    return _fig, _fig_2, _fig_3, _fig_4
 
 
 
