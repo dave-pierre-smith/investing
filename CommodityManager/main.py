@@ -54,10 +54,14 @@ _plotly_df['timestamp'] = pd.to_datetime(_plotly_df['timestamp'], format="%Y-%m-
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
 
 CSS_COLOURS = {
-    'background': '#d7e0e0',
-    'h1_text': '#1b1c1c',
-    'h2_text': '#353738'
+    'background': '#101129',
+    'h1_text': '#fff7b3',
+    'h2_text': '#fff7b3',
+    'button': '#5553ad',
+    'button_text': '#ffffff'
 }
+H1_STYLE = {'textAlign': 'center', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text']}
+BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#070814', 'width': '25%', 'font-size': 25}
 
 SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
 
@@ -65,8 +69,12 @@ SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
 # %% Must be called before the callback functions as the decorators need the layout to determine the inputs
 
 # Define the GUI elements
-_h1 = html.H1(children='Daveonomics', style={'textAlign': 'center','color': CSS_COLOURS['h1_text']})
-_h2 = html.H2(children='A portal to analyse markets.', style={'textAlign': 'center','color': CSS_COLOURS['h1_text']})
+_h1 = html.H1(children='Daveonomics', style=H1_STYLE)
+_h2 = html.H2(children='A portal to analyse markets.', style=H1_STYLE)
+_button_commodities = html.Button('Bullion', id='bullion-val', n_clicks=0,style=BUTTON_STYLE);
+_button_currencies = html.Button('currencies', id='currencies-val', n_clicks=0, style=BUTTON_STYLE);
+_button_markets = html.Button('Markets', id='markets-val', n_clicks=0, style=BUTTON_STYLE)
+_button_bonds = html.Button('Bonds', id='bonds-val', n_clicks=0, style=BUTTON_STYLE)
 
 _dt_picker = dcc.DatePickerRange(id='my-date-picker-range',
             min_date_allowed=_plotly_df['timestamp'].min(), max_date_allowed=_plotly_df['timestamp'].max(),
@@ -86,10 +94,14 @@ _graph_sell_limit = dcc.Graph(id='graph_sell_limit', style={'width': '100%'})
 _graph_buy_quantity = dcc.Graph(id='graph_buy_quantity', style={'width': '100%'})
 _graph_sell_quantity = dcc.Graph(id='graph_sell_quantity', style={'width': '100%'})
 
+# Grouped together widgets used across multiple pages
+CONTROL_BAR = [_h1, _button_commodities, _button_currencies, _button_markets, _button_bonds]
+
 # Group the elements into DIVS
 app.layout = \
     html.Div([
-        html.Div([_h1, _h2, _dt_picker, _dropdown]),
+        html.Div(CONTROL_BAR),
+        html.Div([_dt_picker, _dropdown]),
         html.Div([_graph], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
         html.Div([_graph_sell_limit], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
         html.Div([_graph_buy_quantity], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
