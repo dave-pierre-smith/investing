@@ -1045,6 +1045,8 @@ def display_value_2(value, session_id):
         html.Pre(df.to_csv())
     ])
     """
+
+"""
 print(dcc.__version__) # 0.6.0 or above is required
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -1117,6 +1119,7 @@ def display_page(pathname):
     else:
         return index_page
     # You could also return a 404 "URL not found" page here
+    """
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
@@ -1131,4 +1134,5 @@ def display_page(pathname):
 if __name__ == "__main__":
 
     #print("DASH VERSION: {}".format(dcc.__version__))
-    app.run_server(debug=True)
+    # app.run_server(debug=True)
+    pass

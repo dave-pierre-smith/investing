@@ -26,6 +26,13 @@ import database_handler as db
 import chart_drawing as cd
 import bullion_vault as bv
 import gold_markets as gm
+import yahoo_finance as yf
+
+
+app = dash.Dash(__name__, external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
+app.config.suppress_callback_exceptions = True
+
+
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
 
@@ -44,14 +51,12 @@ _master_df = pd.DataFrame()
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+#app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+#app.config.suppress_callback_exceptions = True
 
 # Dash GUI dataframes - These are loaded as a part of main() to initialise the data.
 _plotly_df = pd.read_csv("/home/davesmith/Documents/Personal/GIThub/investing/CommodityManager/csv/master.csv")
 _plotly_df['timestamp'] = pd.to_datetime(_plotly_df['timestamp'], format="%Y-%m-%d %H:%M:%S.%f")
-
-
-# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
 
 CSS_COLOURS = {
     'background': '#101129',
@@ -61,9 +66,11 @@ CSS_COLOURS = {
     'button_text': '#ffffff'
 }
 H1_STYLE = {'textAlign': 'center', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text']}
-BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#070814', 'width': '25%', 'font-size': 25}
+BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#070814', 'width': '25%', 'font-size': 25, 'href':'/page-1'}
 
-SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
+
+# %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
+
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Dash Layout
 # %% Must be called before the callback functions as the decorators need the layout to determine the inputs
@@ -71,45 +78,35 @@ SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
 # Define the GUI elements
 _h1 = html.H1(children='Daveonomics', style=H1_STYLE)
 _h2 = html.H2(children='A portal to analyse markets.', style=H1_STYLE)
-_button_commodities = html.Button('Bullion', id='bullion-val', n_clicks=0,style=BUTTON_STYLE);
-_button_currencies = html.Button('currencies', id='currencies-val', n_clicks=0, style=BUTTON_STYLE);
-_button_markets = html.Button('Markets', id='markets-val', n_clicks=0, style=BUTTON_STYLE)
-_button_bonds = html.Button('Bonds', id='bonds-val', n_clicks=0, style=BUTTON_STYLE)
 
-_dt_picker = dcc.DatePickerRange(id='my-date-picker-range',
-            min_date_allowed=_plotly_df['timestamp'].min(), max_date_allowed=_plotly_df['timestamp'].max(),
-            initial_visible_month=_plotly_df['timestamp'].max().date(), end_date=_plotly_df['timestamp'].max().date())
-
-_dropdown = dcc.Dropdown(id='dropdown-currency',
-        options=[
-            {'label': 'Great British Pounds', 'value': 'GBP'},
-            {'label': 'US Dollar', 'value': 'USD'},
-            {'label': 'Euro', 'value': 'EUR'}
-        ],
-        value='GBP'
-    )
-
-_graph = dcc.Graph(id='indicator-graphic', style={'width': '100%'})
-_graph_sell_limit = dcc.Graph(id='graph_sell_limit', style={'width': '100%'})
-_graph_buy_quantity = dcc.Graph(id='graph_buy_quantity', style={'width': '100%'})
-_graph_sell_quantity = dcc.Graph(id='graph_sell_quantity', style={'width': '100%'})
+_button_bullion = dcc.Link(html.Button('Bullion', id='bullion-val', n_clicks=0,style=BUTTON_STYLE), href='bullion')
+_button_currencies = dcc.Link(html.Button('currencies', id='currencies-val', n_clicks=0, style=BUTTON_STYLE), href='currencies')
+_button_markets = dcc.Link(html.Button('Markets', id='markets-val', n_clicks=0, style=BUTTON_STYLE), href='markets')
+_button_bonds = dcc.Link(html.Button('Bonds', id='bonds-val', n_clicks=0, style=BUTTON_STYLE), href='bonds')
 
 # Grouped together widgets used across multiple pages
-CONTROL_BAR = [_h1, _button_commodities, _button_currencies, _button_markets, _button_bonds]
+CONTROL_BAR = [_h1, _button_bullion, _button_currencies, _button_markets, _button_bonds]
 
 # Group the elements into DIVS
-app.layout = \
-    html.Div([
-        html.Div(CONTROL_BAR),
-        html.Div([_dt_picker, _dropdown]),
-        html.Div([_graph], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
-        html.Div([_graph_sell_limit], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
-        html.Div([_graph_buy_quantity], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
-        html.Div([_graph_sell_quantity], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
+LAYOUT = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(CONTROL_BAR),
+    html.Div(id='page-content'),
 
-    ],
-    style={'backgroundColor': CSS_COLOURS['background']})
+    ], style={'backgroundColor': CSS_COLOURS['background']})
 
+# Group the elements into DIVS
+app.layout = LAYOUT
+
+# Once the main page elements are built, build the other GUI Pages which require elements from them
+import gui.gui_main as gui_main
+import gui.gui_bullion as gui_bullion
+import gui.gui_markets as gui_markets
+import gui.gui_currencies as gui_currencies
+import gui.gui_bonds as gui_bonds
+
+# Register the callbacks for all the pages
+gui_bullion.register_update_graph_callbacks(app)
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
@@ -118,38 +115,39 @@ app.layout = \
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
 
-@app.callback([Output('indicator-graphic', 'figure'),
-               Output('graph_sell_limit', 'figure'),
-               Output('graph_buy_quantity', 'figure'),
-               Output('graph_sell_quantity', 'figure')],
-              [Input('my-date-picker-range', 'start_date'),
-               Input('my-date-picker-range', 'end_date'),
-               Input('dropdown-currency', 'value')])
-def update_graph(start_date, end_date, currency):
+last_pathname = ""
 
-    global _plotly_df
+# Update the index
+@app.callback(Output('page-content', 'children'),
+              [Input('url', 'pathname')])
+def display_page(pathname):
+    global last_pathname
+    print("display_page({}), last_pathname: {},".format(pathname, last_pathname))
 
-    print("update_graph, df.len: {}, df.columns {}".format(len(_plotly_df), _plotly_df.columns))
+    # Add some debug code to catch repeated callbacks
+    if last_pathname == pathname:
+        last_pathname = pathname
+        print("last_pathname: {}, pathname: {}".format(last_pathname, pathname))
+        return
 
-    # Mask out the currency
-    _temp_df = _plotly_df.copy()
-    _temp_df = _temp_df.loc[_plotly_df['currency'] == currency]
+    last_pathname = pathname
 
-    # We have some dates to mask the data on
-    if start_date is not None and end_date is not None:
-        a_start_date = datetime.strptime(re.split('T| ', start_date)[0], '%Y-%m-%d')
-        a_end_date = datetime.strptime(re.split('T| ', end_date)[0], '%Y-%m-%d')
+    if pathname == '/bullion':
+        # print(gui_bullion.LAYOUT)
+        _loayout = gui_bullion.get_layout()
 
-        _temp_df = _temp_df.loc[(_temp_df["timestamp"] >= a_start_date) & (_temp_df["timestamp"] <= a_end_date)]
-        print("len(_df): {}", len(_temp_df))
+        return _loayout
 
-    _fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="buy_limit")
-    _fig_2 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="sell_limit")
-    _fig_3 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="buy_quantity")
-    _fig_4 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="sell_quantity")
+    elif pathname == '/currencies':
 
-    return _fig, _fig_2, _fig_3, _fig_4
+        return gui_currencies.LAYOUT
 
+    elif pathname == '/markets':
+        yf.get_stock()
+        return gui_markets.LAYOUT
+
+    elif pathname == '/bonds':
+        return gui_bonds.LAYOUT
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
@@ -242,6 +240,8 @@ if __name__ == "__main__":
     parser.add_argument("--gather_data", help="Run the thread to gather market data from bullion vault.", action="store_true")
     parser.add_argument("--draw_chart", help="Draw the market data we have in the database.", action="store_true")
     args = parser.parse_args()
+
+
 
     # main(args)
 
