@@ -26,9 +26,9 @@ import database_handler as db
 import chart_drawing as cd
 import bullion_vault as bv
 import gold_markets as gm
+import yahoo_finance as yf
 
 # GUI Modules
-import main
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
@@ -36,7 +36,21 @@ import main
 
 # Dash GUI dataframes - These are loaded as a part of main() to initialise the data.
 
+CSS_COLOURS = {
+    'background': '#101129',
+    'h1_text': '#fff7b3',
+    'h2_text': '#fff7b3',
+    'button': '#5553ad',
+    'button_text': '#ffffff'
+}
 
+STOCK_TICKER = [
+                 {'label': 'Tesla', 'value': 'TSLA'},
+                 {'label': 'Microsoft', 'value': 'MSFT'},
+                 {'label': 'Apple', 'value': 'AAPL'}
+             ]
+
+print("STOCK_TICKER[0]['value'] = ", STOCK_TICKER[0]['value'])
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
 
@@ -46,16 +60,28 @@ import main
 # %% Must be called before the callback functions as the decorators need the layout to determine the inputs
 
 # Define the GUI elements
+_dropdown = dcc.Dropdown(id='dropdown-stock', options=STOCK_TICKER, value=STOCK_TICKER[0]['value'], style={'width': '100%', 'float': 'left'})
 
+_df = yf.get_stock(STOCK_TICKER[0]['value']).copy()
+_df = _df.reset_index()
+
+print("update_stock_graph, df.len: {}, df.columns {}".format(len(_df), _df.columns))
+
+#_fig = cd.plotly_scatter_fig(_df, "Dave is a legend", a_xaxis="index", a_yaxis="Open")
+_fig = cd.plotly_candlestick(_df)
+
+_graph = dcc.Graph(id='stock-graphic', figure=_fig, style={'width': '100%', 'float': 'right'})
 
 # Grouped together widgets used across multiple pages
 
 # Build the layout
 LAYOUT = \
     html.Div([
-        html.Div(["Dave is a legend"])
+        html.Br(),
+        html.Div([_dropdown], style={'width': '30%', 'float': 'left', 'display': 'inline-block'}),
+        html.Div([_graph], style={'width': '70%', 'backgroundColor': CSS_COLOURS['background'], 'display': 'inline-block'}),
     ],
-    style={'backgroundColor': main.CSS_COLOURS['background']})
+    style={'backgroundColor': CSS_COLOURS['background']})
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
@@ -65,3 +91,19 @@ LAYOUT = \
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
 
+def register_update_stock_graph_callbacks(app):
+
+    @app.callback(Output('stock-graphic', 'figure'),
+                  [Input('dropdown-stock', 'value')])
+    def update_stock_graph(a_stock):
+        print("update_stock_graph({})".format(a_stock))
+
+        _df = yf.get_stock(a_stock).copy()
+        _df = _df.reset_index()
+
+        print("update_stock_graph, df.len: {}, df.columns {}".format(len(_df), _df.columns))
+
+        _fig = cd.plotly_candlestick(_df)
+        #_fig = cd.plotly_scatter_fig(_df, "Dave is a legend",  a_xaxis="index", a_yaxis="open")
+
+        return _fig

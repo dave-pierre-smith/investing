@@ -27,16 +27,18 @@ logger.setLevel(logging.DEBUG)
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Functions
 
-def get_stock():
-    msft = yfinance.Ticker("MSFT")
+def get_stock(a_stock):
+    msft = yfinance.Ticker(a_stock)
 
     # get stock info
     print(msft.info)
 
     # get historical market data
-    hist = msft.history(period="5d")
-    print(hist)
+    hist = msft.history(period="max")
+    #print(hist)
     time.sleep(1)
+
+    return hist
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
 

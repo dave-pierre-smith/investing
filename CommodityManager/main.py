@@ -65,8 +65,8 @@ CSS_COLOURS = {
     'button': '#5553ad',
     'button_text': '#ffffff'
 }
-H1_STYLE = {'textAlign': 'center', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text']}
-BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#070814', 'width': '25%', 'font-size': 25, 'href':'/page-1'}
+H1_STYLE = {'textAlign': 'left', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text']}
+BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#070814', 'width': '16%', 'font-size': 25}
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
@@ -83,9 +83,11 @@ _button_bullion = dcc.Link(html.Button('Bullion', id='bullion-val', n_clicks=0,s
 _button_currencies = dcc.Link(html.Button('currencies', id='currencies-val', n_clicks=0, style=BUTTON_STYLE), href='currencies')
 _button_markets = dcc.Link(html.Button('Markets', id='markets-val', n_clicks=0, style=BUTTON_STYLE), href='markets')
 _button_bonds = dcc.Link(html.Button('Bonds', id='bonds-val', n_clicks=0, style=BUTTON_STYLE), href='bonds')
+_button_govt = dcc.Link(html.Button('Govt', id='govt-val', n_clicks=0, style=BUTTON_STYLE), href='govt')
+_button_boe = dcc.Link(html.Button('BoE', id='boe-val', n_clicks=0, style=BUTTON_STYLE), href='boe')
 
 # Grouped together widgets used across multiple pages
-CONTROL_BAR = [_h1, _button_bullion, _button_currencies, _button_markets, _button_bonds]
+CONTROL_BAR = [_h1, _button_bullion, _button_currencies, _button_markets, _button_bonds, _button_govt, _button_boe]
 
 # Group the elements into DIVS
 LAYOUT = html.Div([
@@ -107,6 +109,7 @@ import gui.gui_bonds as gui_bonds
 
 # Register the callbacks for all the pages
 gui_bullion.register_update_graph_callbacks(app)
+gui_markets.register_update_stock_graph_callbacks(app)
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
@@ -133,17 +136,12 @@ def display_page(pathname):
     last_pathname = pathname
 
     if pathname == '/bullion':
-        # print(gui_bullion.LAYOUT)
-        _loayout = gui_bullion.get_layout()
-
-        return _loayout
+        return gui_bullion.LAYOUT
 
     elif pathname == '/currencies':
-
         return gui_currencies.LAYOUT
 
     elif pathname == '/markets':
-        yf.get_stock()
         return gui_markets.LAYOUT
 
     elif pathname == '/bonds':

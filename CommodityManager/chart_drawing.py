@@ -22,7 +22,6 @@ import plotly.express as px
 
 
 # Custom modules
-import main
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
@@ -85,10 +84,26 @@ def plotly_line(a_df, a_title, a_columns=[]):
 
     plotly.offline.plot(fig, auto_open=True)
 
-def plotly_scatter_fig(a_df, a_title, a_yaxis):
+def plotly_scatter_fig(a_df, a_title, a_xaxis, a_yaxis, a_color=None):
     """:arg
     """
-    print("plotly_scatter, args {} {} ".format(a_df["timestamp"].iloc[0], len(a_df)))
+    print("plotly_scatter, args {} {} {}".format(len(a_df), a_xaxis, a_yaxis))
+
+    # Check to see what
+    if a_xaxis == "index":
+        _ts_col = a_df.index
+
+    else:
+        TIME_COLUMNS = ['timestamp', 'Date']
+
+        _ts_columns = list(set(TIME_COLUMNS).intersection(a_df.columns))
+
+        print("_ts_columns: {}".format(_ts_columns))
+
+        if len(_ts_columns) > 1:
+            print("Error, more than 1 timestamp column.")
+
+        _ts_col = _ts_columns[0]
 
     #_df = a_df.copy()
 
@@ -105,9 +120,10 @@ def plotly_scatter_fig(a_df, a_title, a_yaxis):
     #fig = sp.make_subplots(rows=2, cols=1)
     print("plotly_scatter, initialise figure with 2 subplots. Parse over {} columns, {}".format(_col_count, a_df.columns))
 
-    fig = px.line(a_df, x="timestamp", y=a_yaxis, color="location")
+    fig = px.line(a_df, x=_ts_col, y=a_yaxis, color=a_color)
 
     #fig.update_layout({'color': main.CSS_COLOURS["background"]})
+    print("plotly_scatter_fig, fig type({})".format(type(fig)))
 
     return fig
 
@@ -192,6 +208,7 @@ def plotly_scatter(a_df, a_title, a_columns=None):
 
     print("{} data points ready to plot across {} columns and {} rows.".format(_data_points, _cols_loaded, len(a_df.index)))
 
+
     #fig = {'data': data, 'layout': layout, 'frame': None}
 
     return fig
@@ -205,6 +222,17 @@ def plotly_scatter(a_df, a_title, a_columns=None):
     #fig.show()
 
     # plotly.offline.plot(fig, auto_open=True)
+
+def plotly_candlestick(a_df):
+    # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/finance-charts-apple.csv')
+
+    fig = go.Figure(data=[go.Candlestick(x=a_df['Date'],
+                                         open=a_df['Open'], high=a_df['High'],
+                                         low=a_df['Low'], close=a_df['Close'])
+                          ])
+
+    print("plotly_candlestick, fig type({})".format(type(fig)))
+    return fig
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main
 

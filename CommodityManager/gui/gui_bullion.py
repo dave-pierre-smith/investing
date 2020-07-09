@@ -26,9 +26,9 @@ import database_handler as db
 import chart_drawing as cd
 import bullion_vault as bv
 import gold_markets as gm
+import pandas_handler as ph
 
 # GUI Modules
-import main
 import gui.gui_main as gui_main
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Constants
@@ -57,6 +57,13 @@ _plotly_df['timestamp'] = pd.to_datetime(_plotly_df['timestamp'], format="%Y-%m-
 
 SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
 
+CSS_COLOURS = {
+    'background': '#101129',
+    'h1_text': '#fff7b3',
+    'h2_text': '#fff7b3',
+    'button': '#5553ad',
+    'button_text': '#ffffff'
+}
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Dash Layout
 # %% Must be called before the callback functions as the decorators need the layout to determine the inputs
@@ -68,43 +75,60 @@ SLIDER_DATES = [datetime(2017,1,1) + timedelta(weeks=(x*3)) for x in range(16)]
 # Grouped together widgets used across multiple pages
 
 # Build the layout
-def get_layout():
-    # Define the GUI elements
-    _dt_picker = dcc.DatePickerRange(id='my-date-picker-range',
-                                     min_date_allowed=_plotly_df['timestamp'].min(),
-                                     max_date_allowed=_plotly_df['timestamp'].max(),
-                                     initial_visible_month=_plotly_df['timestamp'].max().date(),
-                                     end_date=_plotly_df['timestamp'].max().date())
 
-    _dropdown = dcc.Dropdown(id='dropdown-currency',
-                             options=[
-                                 {'label': 'Great British Pounds', 'value': 'GBP'},
-                                 {'label': 'US Dollar', 'value': 'USD'},
-                                 {'label': 'Euro', 'value': 'EUR'}
-                             ],
-                             value='GBP'
-                             )
+# Define the GUI elements
+_dt_picker = dcc.DatePickerRange(id='my-date-picker-range',
+                                 min_date_allowed=_plotly_df['timestamp'].min(),
+                                 max_date_allowed=_plotly_df['timestamp'].max(),
+                                 initial_visible_month=_plotly_df['timestamp'].max().date(),
+                                 end_date=_plotly_df['timestamp'].max().date())
 
-    #_fig1, _fig2, _fig3, _fig4 = update_graph("2017-01-01", "2020-07-01", "GBP")
+_dropdown = dcc.Dropdown(id='dropdown-currency',
+                         options=[
+                             {'label': 'Great British Pounds', 'value': 'GBP'},
+                             {'label': 'US Dollar', 'value': 'USD'},
+                             {'label': 'Euro', 'value': 'EUR'}
+                         ],
+                         value='GBP'
+                         )
 
-    _graph = dcc.Graph(id='indicator-graphic', style={'width': '100%'})
-    _graph_sell_limit = dcc.Graph(id='graph_sell_limit', style={'width': '100%'})
-    _graph_buy_quantity = dcc.Graph(id='graph_buy_quantity', style={'width': '100%'})
-    _graph_sell_quantity = dcc.Graph(id='graph_sell_quantity', style={'width': '100%'})
+# Mask out the currency
+_temp_df = _plotly_df.copy()
+_temp_df = _temp_df.loc[_plotly_df['currency'] == "GBP"]
 
-    _layout = \
-        html.Div([
-            #html.Div(main.CONTROL_BAR),
-            html.Div([_dt_picker, _dropdown]),
-            html.Div([_graph], style={'width': '48%', 'float': 'left', 'backgroundColor': main.CSS_COLOURS['background']}),
-            html.Div([_graph_sell_limit], style={'width': '48%', 'float': 'right', 'backgroundColor': main.CSS_COLOURS['background']}),
-            html.Div([_graph_buy_quantity], style={'width': '48%', 'float': 'left', 'backgroundColor': main.CSS_COLOURS['background']}),
-            html.Div([_graph_sell_quantity], style={'width': '48%', 'float': 'right', 'backgroundColor': main.CSS_COLOURS['background']}),
+_temp_df = ph.resample_bullion_dataframe(_temp_df)
 
-        ],
-        style={'backgroundColor': main.CSS_COLOURS['background']})
+"""
+# We have some dates to mask the data on
+a_start_date = datetime.strptime(re.split('T| ', "2017-01-01")[0], '%Y-%m-%d')
+a_end_date = datetime.strptime(re.split('T| ', "2020-07-30")[0], '%Y-%m-%d')
 
-    return _layout
+_temp_df = _temp_df.loc[(_temp_df["timestamp"] >= a_start_date) & (_temp_df["timestamp"] <= a_end_date)]
+print("len(_df): {}", len(_temp_df))
+"""
+
+_fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="buy_limit", a_color="location")
+_fig_2 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="sell_limit", a_color="location")
+_fig_3 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="buy_quantity", a_color="location")
+_fig_4 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="sell_quantity", a_color="location")
+
+_graph = dcc.Graph(id='indicator-graphic', figure=_fig, style={'width': '100%'})
+_graph_sell_limit = dcc.Graph(id='graph_sell_limit', figure=_fig_2, style={'width': '100%'})
+_graph_buy_quantity = dcc.Graph(id='graph_buy_quantity', figure=_fig_3, style={'width': '100%'})
+_graph_sell_quantity = dcc.Graph(id='graph_sell_quantity', figure=_fig_4, style={'width': '100%'})
+
+LAYOUT = \
+    html.Div([
+        #html.Div(main.CONTROL_BAR),
+        html.Div([_dt_picker, _dropdown]),
+        html.Div([_graph], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
+        html.Div([_graph_sell_limit], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
+        html.Div([_graph_buy_quantity], style={'width': '48%', 'float': 'left', 'backgroundColor': CSS_COLOURS['background']}),
+        html.Div([_graph_sell_quantity], style={'width': '48%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']}),
+
+    ],
+    style={'backgroundColor': CSS_COLOURS['background']})
+
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
@@ -131,6 +155,7 @@ def register_update_graph_callbacks(app):
 
         # Mask out the currency
         _temp_df = _plotly_df.copy()
+
         _temp_df = _temp_df.loc[_plotly_df['currency'] == currency]
 
         # We have some dates to mask the data on
@@ -141,9 +166,11 @@ def register_update_graph_callbacks(app):
             _temp_df = _temp_df.loc[(_temp_df["timestamp"] >= a_start_date) & (_temp_df["timestamp"] <= a_end_date)]
             print("len(_df): {}", len(_temp_df))
 
-        _fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="buy_limit")
-        _fig_2 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="sell_limit")
-        _fig_3 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="buy_quantity")
-        _fig_4 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_yaxis="sell_quantity")
+        _temp_df = ph.resample_bullion_dataframe(_temp_df)
+
+        _fig = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="buy_limit", a_color="location")
+        _fig_2 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="sell_limit", a_color="location")
+        _fig_3 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="buy_quantity", a_color="location")
+        _fig_4 = cd.plotly_scatter_fig(_temp_df, "Dave is a legend", a_xaxis="timestamp", a_yaxis="sell_quantity", a_color="location")
 
         return _fig, _fig_2, _fig_3, _fig_4
