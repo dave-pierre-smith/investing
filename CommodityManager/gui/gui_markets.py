@@ -37,10 +37,10 @@ import yahoo_finance as yf
 # Dash GUI dataframes - These are loaded as a part of main() to initialise the data.
 
 CSS_COLOURS = {
-    'background': '#101129',
+    'background': '#070814', # 101129
     'h1_text': '#fff7b3',
     'h2_text': '#fff7b3',
-    'button': '#5553ad',
+    'button': '#242424', # 5553ad
     'button_text': '#ffffff'
 }
 
@@ -50,7 +50,8 @@ STOCK_TICKER = [
                  {'label': 'Apple', 'value': 'AAPL'}
              ]
 
-print("STOCK_TICKER[0]['value'] = ", STOCK_TICKER[0]['value'])
+H3_STYLE = {'textAlign': 'left', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text']}
+
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
 
@@ -62,6 +63,7 @@ print("STOCK_TICKER[0]['value'] = ", STOCK_TICKER[0]['value'])
 # Define the GUI elements
 _dropdown = dcc.Dropdown(id='dropdown-stock', options=STOCK_TICKER, value=STOCK_TICKER[0]['value'], style={'width': '100%', 'float': 'left'})
 
+
 _df = yf.get_stock(STOCK_TICKER[0]['value']).copy()
 _df = _df.reset_index()
 
@@ -70,16 +72,18 @@ print("update_stock_graph, df.len: {}, df.columns {}".format(len(_df), _df.colum
 #_fig = cd.plotly_scatter_fig(_df, "Dave is a legend", a_xaxis="index", a_yaxis="Open")
 _fig = cd.plotly_candlestick(_df)
 
-_graph = dcc.Graph(id='stock-graphic', figure=_fig, style={'width': '100%', 'float': 'right'})
+_graph = dcc.Graph(id='stock-graphic', figure=_fig, style={'width': '100%', 'float': 'right', 'backgroundColor': CSS_COLOURS['background']})
 
 # Grouped together widgets used across multiple pages
 
 # Build the layout
 LAYOUT = \
     html.Div([
-        html.Br(),
-        html.Div([_dropdown], style={'width': '30%', 'float': 'left', 'display': 'inline-block'}),
-        html.Div([_graph], style={'width': '70%', 'backgroundColor': CSS_COLOURS['background'], 'display': 'inline-block'}),
+        html.Div(["Input 1"], style={'width': '33%', 'float': 'left', 'display': 'inline-block'}),
+        html.Div(["Input 2"], style={'width': '33%', 'float': 'left', 'display': 'inline-block'}),
+        html.Div(["Input 3"], style={'width': '33%', 'float': 'left', 'display': 'inline-block'}),
+        html.Div([_dropdown], style={'width': '15%', 'float': 'left', 'display': 'inline-block'}),
+        html.Div([_graph], style={'width': '83%', 'backgroundColor': CSS_COLOURS['background'], 'display': 'inline-block'}),
     ],
     style={'backgroundColor': CSS_COLOURS['background']})
 

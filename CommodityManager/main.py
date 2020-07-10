@@ -59,14 +59,25 @@ _plotly_df = pd.read_csv("/home/davesmith/Documents/Personal/GIThub/investing/Co
 _plotly_df['timestamp'] = pd.to_datetime(_plotly_df['timestamp'], format="%Y-%m-%d %H:%M:%S.%f")
 
 CSS_COLOURS = {
-    'background': '#101129',
+    'background': '#070814', #  101129
     'h1_text': '#fff7b3',
     'h2_text': '#fff7b3',
-    'button': '#5553ad',
+    'button': '#242424',
     'button_text': '#ffffff'
 }
-H1_STYLE = {'textAlign': 'left', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text']}
-BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#070814', 'width': '16%', 'font-size': 25}
+H1_STYLE = {'textAlign': 'left', 'font-family': 'Courier', 'color': CSS_COLOURS['h1_text'], 'backgroundColor': '#050505', 'hover' :{
+  'backgroundColor': '#ffffff', #; /* Green */
+  'color': 'white'
+}}
+BUTTON_TIER1_INNER_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#050505',
+                            'width': '17%', 'font-size': 25, 'border': '0px solid #ffffff',
+                            'hover' :{
+                              'backgroundColor': '#ffffff', #; /* Green */
+                              'color': 'white'
+                            }}
+BUTTON_TIER1_OUTER_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#050505', 'width': '16%', 'font-size': 25, 'border': '0px solid #ffffff'}
+BUTTON_TIER2_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '#050505', 'width': '96%', 'height': '10pc', 'font-size': 20, 'float': 'centre',
+                      'position': 'relative', 'left': '2%', 'top': '0px'}
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Style Sheet
@@ -79,23 +90,49 @@ BUTTON_STYLE = {'textAlign': 'center', 'color': '#fff7b3', 'background-color': '
 _h1 = html.H1(children='Daveonomics', style=H1_STYLE)
 _h2 = html.H2(children='A portal to analyse markets.', style=H1_STYLE)
 
-_button_bullion = dcc.Link(html.Button('Bullion', id='bullion-val', n_clicks=0,style=BUTTON_STYLE), href='bullion')
-_button_currencies = dcc.Link(html.Button('currencies', id='currencies-val', n_clicks=0, style=BUTTON_STYLE), href='currencies')
-_button_markets = dcc.Link(html.Button('Markets', id='markets-val', n_clicks=0, style=BUTTON_STYLE), href='markets')
-_button_bonds = dcc.Link(html.Button('Bonds', id='bonds-val', n_clicks=0, style=BUTTON_STYLE), href='bonds')
-_button_govt = dcc.Link(html.Button('Govt', id='govt-val', n_clicks=0, style=BUTTON_STYLE), href='govt')
-_button_boe = dcc.Link(html.Button('BoE', id='boe-val', n_clicks=0, style=BUTTON_STYLE), href='boe')
+_button_bullion = dcc.Link(html.Button('Bullion', id='bullion-val', n_clicks=0,style=BUTTON_TIER1_OUTER_STYLE), href='bullion')
+_button_currencies = dcc.Link(html.Button('currencies', id='currencies-val', n_clicks=0, style=BUTTON_TIER1_INNER_STYLE), href='currencies')
+_button_markets = dcc.Link(html.Button('Markets', id='markets-val', n_clicks=0, style=BUTTON_TIER1_INNER_STYLE), href='markets')
+_button_bonds = dcc.Link(html.Button('Bonds', id='bonds-val', n_clicks=0, style=BUTTON_TIER1_INNER_STYLE), href='bonds')
+_button_govt = dcc.Link(html.Button('Govt', id='govt-val', n_clicks=0, style=BUTTON_TIER1_INNER_STYLE), href='govt')
+_button_boe = dcc.Link(html.Button('BoE', id='boe-val', n_clicks=0, style=BUTTON_TIER1_OUTER_STYLE), href='boe')
+_hr = html.Hr(style={'color': '#050505', 'backgroundColor': '#fff7b3', 'width': '100%'})
 
 # Grouped together widgets used across multiple pages
-CONTROL_BAR = [_h1, _button_bullion, _button_currencies, _button_markets, _button_bonds, _button_govt, _button_boe]
+CONTROL_BAR = {'bullion-val': _button_bullion, 'currencies-val':  _button_currencies,
+               'markets-val': _button_markets, 'bonds-val': _button_bonds, 'govt-val': _button_govt, 'boe-val': _button_boe}
+print(CONTROL_BAR.values())
+
+_button_dimension1 = dcc.Link(html.Button('1D', id='dimension1-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='dimension1')
+_button_dimension2 = dcc.Link(html.Button('2D', id='dimension2-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='dimension2')
+_button_dimension3 = dcc.Link(html.Button('3D', id='dimension3-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='dimension3')
+_button_dimension4 = dcc.Link(html.Button('4D', id='dimension4-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='dimension4')
+_button_dimension5 = dcc.Link(html.Button('5D', id='dimension5-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='dimension5')
+_button_dimension6 = dcc.Link(html.Button('6D', id='dimension6-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='dimension6')
+
+DIMENSION_BAR = [_button_dimension1, _button_dimension2, _button_dimension3, _button_dimension4, _button_dimension5, _button_dimension6]
+
+_button_chart_scatter = dcc.Link(html.Button('Scatter', id='scatter-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='scatter')
+_button_chart_line = dcc.Link(html.Button('Line', id='line-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='line')
+_button_chart_bubble = dcc.Link(html.Button('Bubble', id='bubble-val', n_clicks=0, style=BUTTON_TIER2_STYLE), href='bubble')
+
+CHART_BAR = [_button_chart_scatter, _button_chart_line, _button_chart_bubble]
 
 # Group the elements into DIVS
 LAYOUT = html.Div([
     dcc.Location(id='url', refresh=False),
-    html.Div(CONTROL_BAR),
-    html.Div(id='page-content'),
+    html.Div(_h1, style={'backgroundColor': '#050505'}),
+    html.Div(list(CONTROL_BAR.values()), style={'backgroundColor': '#050505'}),
+    html.Div(_hr, style={'backgroundColor': '#050505'}),
+    #html.Div([html.Hr()], style={'color': '#050505', 'backgroundColor': '#050505', 'width': '100%'}),
+    html.Div([
+        html.Div(DIMENSION_BAR, style={'width': '30%', 'float': 'left', 'display': 'inline-block'}),
+        html.Div(CHART_BAR, style={'width': '70%', 'float': 'left', 'display': 'inline-block'})
+        ], style={'width': '15%', 'float': 'left', 'display': 'inline-block', 'border-style': 'ridge', 'backgroundColor': '#050505', 'position': 'relative', 'top': '0px', 'left': '2%'} ),
 
-    ], style={'backgroundColor': CSS_COLOURS['background']})
+    html.Div(id='page-content', style={'width': '81%', 'float': 'right', 'display': 'inline-block', 'backgroundColor': CSS_COLOURS['background'], 'position': 'relative', 'top': '0px', 'left': '0%'}),
+
+    ], style={'width': '100%', 'float': 'center', 'height': '100pc', 'display': 'inline-block', 'backgroundColor': CSS_COLOURS['background']})
 
 # Group the elements into DIVS
 app.layout = LAYOUT
@@ -120,10 +157,13 @@ gui_markets.register_update_stock_graph_callbacks(app)
 
 last_pathname = ""
 
+"""
 # Update the index
-@app.callback(Output('page-content', 'children'),
-              [Input('url', 'pathname')])
-def display_page(pathname):
+@app.callback([Output('page-content', 'children'), Output("bullion-val", "style"), Output("currencies-val", "style"), Output("markets-val", "style"),
+               Output("bonds-val", "style"), Output("govt-val", "style"), Output("boe-val", "style")],
+              [Input("bullion-val", "n_clicks"), Input("currencies-val", "n_clicks"), Input("markets-val", "n_clicks"),
+               Input("bonds-val", "n_clicks"), Input("govt-val", "n_clicks"), Input("boe-val", "n_clicks")])
+def display_page(pathname, *args):
     global last_pathname
     print("display_page({}), last_pathname: {},".format(pathname, last_pathname))
 
@@ -135,8 +175,26 @@ def display_page(pathname):
 
     last_pathname = pathname
 
+    # Update the button color and load the new layout
+    _return = []
+
+    for _id in list(CONTROL_BAR.keys()):
+        _style = CONTROL_BAR[_id].children.style.copy()
+        print(_style)
+
+        _link_id = pathname[1:] + '-val'
+
+        if _id == _link_id:
+            _style['background-color'] = '#403f3f'
+            _return.append(_style)
+
+        else:
+            _style['background-color'] = '#050505'
+            _return.append(_style)
+
+
     if pathname == '/bullion':
-        return gui_bullion.LAYOUT
+        layout = gui_bullion.LAYOUT
 
     elif pathname == '/currencies':
         return gui_currencies.LAYOUT
@@ -146,6 +204,96 @@ def display_page(pathname):
 
     elif pathname == '/bonds':
         return gui_bonds.LAYOUT
+
+    elif pathname == '/govt':
+        return gui_bonds.LAYOUT
+
+    elif pathname == '/boe':
+        return gui_bonds.LAYOUT
+        """
+
+"""
+# Update the shading on the tier 1 buttons.
+"""
+@app.callback(
+    [Output("bullion-val", "style"), Output("currencies-val", "style"), Output("markets-val", "style"),
+     Output("bonds-val", "style"), Output("govt-val", "style"), Output("boe-val", "style"), Output('page-content', 'children')],
+    [Input("bullion-val", "n_clicks"), Input("currencies-val", "n_clicks"), Input("markets-val", "n_clicks"),
+     Input("bonds-val", "n_clicks"), Input("govt-val", "n_clicks"), Input("boe-val", "n_clicks")]
+)
+def set_active(*args):
+    print("set_active, market-val, {}".format(args))
+
+    _return = []
+    ctx = dash.callback_context
+
+    if not ctx.triggered or not any(args):
+        print("No clicks yet")
+        return BUTTON_TIER1_OUTER_STYLE, BUTTON_TIER1_INNER_STYLE, BUTTON_TIER1_INNER_STYLE, BUTTON_TIER1_INNER_STYLE, BUTTON_TIER1_INNER_STYLE, BUTTON_TIER1_OUTER_STYLE, ""
+
+    # get id of triggering button
+    _trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    print("ctx.triggered: {}".format(_trigger_id))
+
+    for _id in list(CONTROL_BAR.keys()):
+        # Update the button colour
+        _style = CONTROL_BAR[_id].children.style.copy()
+        print(_style)
+
+        if _id == _trigger_id:
+            _style['background-color'] = '#403f3f'
+            _return.append(_style)
+
+        else:
+            _style['background-color'] = '#050505'
+            _return.append(_style)
+            #_return.append(BUTTON_TIER1_OUTER_STYLE)
+
+    # Get the layout
+    if _trigger_id == 'bullion-val':
+        _return.append(gui_bullion.LAYOUT)
+
+    elif _trigger_id == 'currencies-val':
+        _return.append(gui_currencies.LAYOUT)
+
+    elif _trigger_id == 'markets-val':
+        _return.append(gui_markets.LAYOUT)
+
+    elif _trigger_id == 'bonds-val':
+        _return.append(gui_bonds.LAYOUT)
+
+    elif _trigger_id == 'govt-val':
+        _return.append(gui_bonds.LAYOUT)
+
+    elif _trigger_id == 'boe-val':
+        _return.append(gui_bonds.LAYOUT)
+
+    else:
+        _return.append("")
+
+    print(_return)
+
+    return _return
+
+    #for _button in args:
+
+
+    """
+    ctx = dash.callback_context
+
+    if not ctx.triggered or not any(args):
+        return ["btn" for _ in range(1, 4)]
+
+    # get id of triggering button
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    return [
+        "btn active" if button_id == f"btn-{i}" else "btn" for i in range(1, 4)
+    ]
+    """
+
+    return {'textAlign': 'center', 'color': '#ffffff', 'background-color': '#403f3f',
+                            'width': '17%', 'font-size': 25, 'border': '0px solid #ffffff'}
 
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main

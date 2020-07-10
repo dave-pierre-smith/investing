@@ -29,6 +29,13 @@ import plotly.express as px
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+CSS_COLOURS = {
+    'background': '#070814', #  101129
+    'h1_text': '#fff7b3',
+    'h2_text': '#fff7b3',
+    'button': '#242424',
+    'button_text': '#ffffff'
+}
 
 # %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Classes
 
@@ -225,11 +232,39 @@ def plotly_scatter(a_df, a_title, a_columns=None):
 
 def plotly_candlestick(a_df):
     # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/finance-charts-apple.csv')
+    layout = go.Layout(
+        plot_bgcolor=CSS_COLOURS['background'],
+        paper_bgcolor=CSS_COLOURS['background'],
+        title='Stock Price',
+        xaxis=dict(
+            title='x Axis',
+            titlefont=dict(
+                family='Courier New, monospace',
+                size=18,
+                color=CSS_COLOURS['button_text']
+            )
+        ),
+        yaxis=dict(
+            title='y Axis',
+            titlefont=dict(
+                family='Courier New, monospace',
+                size=18,
+                color=CSS_COLOURS['button_text']
+            )
+        ),
+        xaxis_rangeslider_visible=False
+    )
+
+    # Or use ...
+    # fig.update_layout(xaxis_rangeslider_visible=False)
+
 
     fig = go.Figure(data=[go.Candlestick(x=a_df['Date'],
                                          open=a_df['Open'], high=a_df['High'],
                                          low=a_df['Low'], close=a_df['Close'])
-                          ])
+                          ], layout=layout)
+
+
 
     print("plotly_candlestick, fig type({})".format(type(fig)))
     return fig
